@@ -2,7 +2,6 @@
 using WebServiceUniversal.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient; // Necessário instalar o pacote NuGet: Microsoft.Data.SqlClient
-using WebServiceUniversal.Models;
 
 namespace MeuUniversalApi.Controllers
 {
@@ -20,6 +19,11 @@ namespace MeuUniversalApi.Controllers
         [HttpPost("executar")]
         public IActionResult ExecutarQuery([FromBody] QueryRequest request)
         {
+
+            /*Criar um função separada para fazer a criptografia e descriptografia da string de conexão, ao receber a query descriptografar e ver se o comando faz sentido
+            desse modo tenho certeza que sómente o meu app vai conseguir acessar o banco de dados, e mesmo que alguém consiga acessar o endpoint,
+            não vai conseguir acessar o banco de dados sem a chave de criptografia*/
+
             // Validação básica de segurança (MUITO IMPORTANTE)
             if (string.IsNullOrEmpty(request.Query))
                 return BadRequest("A query não pode estar vazia.");
