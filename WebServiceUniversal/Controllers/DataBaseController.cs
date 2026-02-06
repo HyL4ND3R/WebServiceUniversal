@@ -36,7 +36,7 @@ namespace MeuUniversalApi.Controllers
             }
 
             var listaResultados = new List<Dictionary<string, object>>();
-            string connectionString = _configuration.GetConnectionString("MinhaConexao");
+            string connectionString = _configuration.GetConnectionString("ConexaoBanco");
 
             try
             {
@@ -45,6 +45,18 @@ namespace MeuUniversalApi.Controllers
                     conn.Open();
                     using (SqlCommand cmd = new SqlCommand(request.Query, conn))
                     {
+
+                        // Adiciona os parâmetros de forma segura
+                        if (request.Parametros != null)
+                        {
+                            foreach (var param in request.Parametros)
+                            {
+                                // O Value.ToString() é uma simplificação para o JSON. 
+                                // Em produção, deve-se tratar os tipos corretamente (int, date, etc).
+                                cmd.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                            }
+                        }
+
                         // Verifica se é um comando de LEITURA (SELECT) ou ESCRITA (INSERT/UPDATE)
                         if (upperQuery.Trim().StartsWith("SELECT"))
                         {
