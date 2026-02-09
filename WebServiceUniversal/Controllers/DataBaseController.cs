@@ -2,6 +2,7 @@
 using WebServiceUniversal.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient; // Necessário instalar o pacote NuGet: Microsoft.Data.SqlClient
+using System.Text.Json;
 
 namespace MeuUniversalApi.Controllers
 {
@@ -24,13 +25,14 @@ namespace MeuUniversalApi.Controllers
             desse modo tenho certeza que sómente o meu app vai conseguir acessar o banco de dados, e mesmo que alguém consiga acessar o endpoint,
             não vai conseguir acessar o banco de dados sem a chave de criptografia*/
 
+
             // Validação básica de segurança (MUITO IMPORTANTE)
             if (string.IsNullOrEmpty(request.Query))
                 return BadRequest("A query não pode estar vazia.");
 
-            // Bloqueio simples de comandos destrutivos (Não substitui segurança real)
+            // Só Bloqueando DROP e TRUNCATE
             string upperQuery = request.Query.ToUpper();
-            if (upperQuery.Contains("DROP ") || upperQuery.Contains("DELETE ") || upperQuery.Contains("TRUNCATE "))
+            if (upperQuery.Contains("DROP ") || upperQuery.Contains("TRUNCATE "))
             {
                 return BadRequest("Comandos destrutivos não são permitidos neste endpoint.");
             }
@@ -51,9 +53,45 @@ namespace MeuUniversalApi.Controllers
                         {
                             foreach (var param in request.Parametros)
                             {
-                                // O Value.ToString() é uma simplificação para o JSON. 
-                                // Em produção, deve-se tratar os tipos corretamente (int, date, etc).
-                                cmd.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                                object valorFinal = param.Value;
+
+                                // O 'Pulo do Gato': Verificar se é um elemento JSON e converter
+                                if (param.Value is JsonElement element)
+                                {
+                                    switch (element.ValueKind)
+                                    {
+                                        case JsonValueKind.String:
+                                            valorFinal = element.GetString();
+                                            // O SQL Server converte string para DateTime automaticamente se o formato estiver correto
+                                            break;
+
+                                        case JsonValueKind.Number:
+                                            // Tenta manter a precisão do número
+                                            if (element.TryGetInt32(out int valInt))
+                                                valorFinal = valInt;
+                                            else if (element.TryGetInt64(out long valLong))
+                                                valorFinal = valLong;
+                                            else
+                                                valorFinal = element.GetDouble();
+                                            break;
+
+                                        case JsonValueKind.True:
+                                        case JsonValueKind.False:
+                                            valorFinal = element.GetBoolean();
+                                            break;
+
+                                        case JsonValueKind.Null:
+                                            valorFinal = DBNull.Value;
+                                            break;
+
+                                        default:
+                                            valorFinal = element.ToString(); // Fallback
+                                            break;
+                                    }
+                                }
+
+                                // Agora sim, adicionamos um tipo nativo (int, string, bool) que o SQL aceita
+                                cmd.Parameters.AddWithValue(param.Key, valorFinal ?? DBNull.Value);
                             }
                         }
 
