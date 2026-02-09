@@ -21,14 +21,15 @@ namespace MeuUniversalApi.Controllers
         public IActionResult ExecutarQuery([FromBody] QueryRequest request)
         {
 
+            // Validação básica de segurança (MUITO IMPORTANTE)
+            if (string.IsNullOrEmpty(request.Query))
+                return BadRequest("A query não pode estar vazia.");
+
+
             /*Criar um função separada para fazer a criptografia e descriptografia da string de conexão, ao receber a query descriptografar e ver se o comando faz sentido
             desse modo tenho certeza que sómente o meu app vai conseguir acessar o banco de dados, e mesmo que alguém consiga acessar o endpoint,
             não vai conseguir acessar o banco de dados sem a chave de criptografia*/
 
-
-            // Validação básica de segurança (MUITO IMPORTANTE)
-            if (string.IsNullOrEmpty(request.Query))
-                return BadRequest("A query não pode estar vazia.");
 
             // Só Bloqueando DROP e TRUNCATE
             string upperQuery = request.Query.ToUpper();
@@ -55,11 +56,13 @@ namespace MeuUniversalApi.Controllers
                             {
                                 object valorFinal = param.Value;
 
-                                // O 'Pulo do Gato': Verificar se é um elemento JSON e converter
+                                // Verificar se é um elemento JSON e converter
                                 if (param.Value is JsonElement element)
                                 {
                                     switch (element.ValueKind)
                                     {
+                                        //Feito case para cada tipo de dados JSON, porém
+                                        // acreidito que possa replicar tudo por String
                                         case JsonValueKind.String:
                                             valorFinal = element.GetString();
                                             // O SQL Server converte string para DateTime automaticamente se o formato estiver correto
