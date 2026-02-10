@@ -3,6 +3,7 @@ using WebServiceUniversal.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient; // Necessário instalar o pacote NuGet: Microsoft.Data.SqlClient
 using System.Text.Json;
+using WebServiceUniversal.Security;
 
 namespace MeuUniversalApi.Controllers
 {
@@ -25,14 +26,13 @@ namespace MeuUniversalApi.Controllers
             if (string.IsNullOrEmpty(request.Query))
                 return BadRequest("A query não pode estar vazia.");
 
+            var queryDescritografada = Criptografia.Descriptografar(request.Query);
 
-            /*Criar um função separada para fazer a criptografia e descriptografia da string de conexão, ao receber a query descriptografar e ver se o comando faz sentido
-            desse modo tenho certeza que sómente o meu app vai conseguir acessar o banco de dados, e mesmo que alguém consiga acessar o endpoint,
-            não vai conseguir acessar o banco de dados sem a chave de criptografia*/
-
+            if (string.IsNullOrEmpty(queryDescritografada))
+                return BadRequest("A query fornecida é inválida.");
 
             // Só Bloqueando DROP e TRUNCATE
-            string upperQuery = request.Query.ToUpper();
+            string upperQuery = queryDescritografada.ToUpper();
             if (upperQuery.Contains("DROP ") || upperQuery.Contains("TRUNCATE "))
             {
                 return BadRequest("Comandos destrutivos não são permitidos neste endpoint.");
@@ -46,7 +46,7 @@ namespace MeuUniversalApi.Controllers
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    using (SqlCommand cmd = new SqlCommand(request.Query, conn))
+                    using (SqlCommand cmd = new SqlCommand(queryDescritografada, conn))
                     {
 
                         // Adiciona os parâmetros de forma segura
@@ -79,6 +79,9 @@ namespace MeuUniversalApi.Controllers
                                             break;
 
                                         case JsonValueKind.True:
+                                            valorFinal = element.GetBoolean();
+                                            break;
+
                                         case JsonValueKind.False:
                                             valorFinal = element.GetBoolean();
                                             break;
