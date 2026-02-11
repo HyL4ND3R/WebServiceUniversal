@@ -117,6 +117,12 @@ namespace MeuUniversalApi.Controllers
                                 }
                             }
                             return Ok(listaResultados); // Retorna JSON com os dados
+                        }else if (upperQuery.Trim().StartsWith("INSERT"))
+                        {
+                            // Adiciona o comando para retornar o ID na mesma transação
+                            cmd.CommandText += "; SELECT SCOPE_IDENTITY();";
+                            var novoId = cmd.ExecuteScalar();
+                            return Ok(new { Mensagem = "Sucesso", LinhasAfetadas = 1, NovoId = Convert.ToInt32(novoId) });
                         }
                         else
                         {
