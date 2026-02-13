@@ -132,6 +132,14 @@ namespace MeuUniversalApi.Controllers
                     }
                 }
             }
+            catch (SqlException ex)
+            {
+                if (ex.Number == 547) // Código de erro de Constraint (Foreign Key)
+                {
+                    return BadRequest("Este registro não pode ser excluído pois está sendo usado em outras telas do sistema.");
+                }
+                return BadRequest("Erro ao excluir: " + ex.Message);
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Erro = ex.Message });
